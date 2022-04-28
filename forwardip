@@ -17,10 +17,16 @@ def delete_rules():
 			rules=[_ for _ in rules  if len(_)>=10 and _[9]==FROM ]
 			for _ in rules:
 				os.system(f"sudo iptables -t nat -D {chain} -d {_[9]} -j DNAT --to-destination {_[10].split('to:')[1]}")
+	elif PLATFORM=='Darwin':
+		os.system(f"sudo ifconfig lo0 -alias {FROM}")
+		rules=os.popen('sudo pfctl -sn -q').read()+'\n'+os.popen('sudo pfctl -sr -q').read()+f'\nrdr pass inet proto {{tcp, udp}} to {FROM} port 1:8021 -> {TO}'
+		for proto in ["tcp","udp"]:
+			rules=rules.replace(f"rdr pass inet proto {proto} to {FROM} port 1:8021 -> {TO}")
+		os.system(f"""echo "{rules}" | sudo pfctl -f -""")
 
 def Exit(signum,frame):
-    delete_rules()
-    exit()
+	delete_rules()
+	exit()
 
 signal.signal(signal.SIGTERM,Exit)
 signal.signal(signal.SIGINT,Exit)
@@ -34,7 +40,12 @@ def make_rule():
 			sudo iptables -t nat -A  PREROUTING -d {FROM} -j DNAT --to-destination {TO}
 		""")
 	elif PLATFORM=='Darwin':
-		os.system(f"""echo "rdr pass on utun2 inet proto {{tcp, udp}} from any to {FROM} port 1:8021 -> {TO}" | sudo pfctl -ef - """)
+		rules=os.popen('sudo pfctl -sn -q').read()+'\n'+os.popen('sudo pfctl -sr -q').read()+f'\nrdr pass inet proto {{tcp, udp}} to {FROM} port 1:8021 -> {TO}'
+		os.system(f"""
+		sudo sysctl -w net.inet.ip.forwarding=1
+		sudo ifconfig lo0 alias {FROM}
+		echo "{rules}" | sudo pfctl -ef - 
+		""")
 make_rule()
 
 Event().wait()
