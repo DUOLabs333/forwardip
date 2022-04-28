@@ -23,6 +23,7 @@ def Exit(signum,frame):
     exit()
 
 signal.signal(signal.SIGTERM,Exit)
+signal.signal(signal.SIGINT,Exit)
 def make_rule():
 	delete_rules()
 	if PLATFORM=='Linux':
