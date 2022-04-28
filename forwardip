@@ -3,7 +3,8 @@
 #Map a new ip $FROM to an existing ip $TO
 import sys
 import os
-
+import signal
+from threading import Event
 PLATFORM=os.uname().sysname
 
 FROM=sys.argv[1]
@@ -17,6 +18,11 @@ def delete_rules():
 			for _ in rules:
 				os.system(f"sudo iptables -t nat -D {chain} -d {_[9]} -j DNAT --to-destination {_[10].split('to:')[1]}")
 
+def Exit(signum,frame):
+    delete_rules()
+    exit()
+
+signal.signal(signal.SIGTERM,Exit)
 def make_rule():
 	delete_rules()
 	if PLATFORM=='Linux':
@@ -29,3 +35,5 @@ def make_rule():
 	elif PLATFORM=='Darwin':
 		os.system(f"""echo "rdr pass on utun2 inet proto {{tcp, udp}} from any to {FROM} port 1:8021 -> {TO}" | sudo pfctl -ef - """)
 make_rule()
+
+Event().wait()
