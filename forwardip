@@ -21,7 +21,7 @@ def delete_rules():
 		os.system(f"sudo ifconfig lo0 -alias {FROM}")
 		rules=os.popen('sudo pfctl -sn -q').read()+'\n'+os.popen('sudo pfctl -sr -q').read()+f'\nrdr pass inet proto {{tcp, udp}} to {FROM} port 1:8021 -> {TO}'
 		for proto in ["tcp","udp"]:
-			rules=rules.replace(f"rdr pass inet proto {proto} to {FROM} port 1:8021 -> {TO}")
+			rules=rules.replace(f"rdr pass inet proto {proto} to {FROM} port 1:8021 -> {TO}","")
 		os.system(f"""echo "{rules}" | sudo pfctl -f -""")
 
 def Exit(signum,frame):
