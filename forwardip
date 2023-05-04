@@ -1,6 +1,8 @@
 #! /usr/bin/env python
 
 #Map a new ip $FROM to an existing ip $TO
+
+#For Darwin, pfctl rules won't work on that machine, but will apply to all other machines. It is not clear why.
 import sys
 import os
 import signal
