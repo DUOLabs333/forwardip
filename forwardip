@@ -10,6 +10,11 @@ PLATFORM=os.uname().sysname
 FROM=sys.argv[1]
 
 TO=sys.argv[2]
+
+if len(sys.argv)<=3:
+    NETIF="lo0"
+else:
+    NETIF="en0"
 def delete_rules():
 	if PLATFORM=='Linux':
 		for chain in ["PREROUTING","OUTPUT"]:
@@ -18,7 +23,7 @@ def delete_rules():
 			for _ in rules:
 				os.system(f"sudo iptables -t nat -D {chain} -d {_[9]} -j DNAT --to-destination {_[10].split('to:')[1]}")
 	elif PLATFORM=='Darwin':
-		os.system(f"sudo ifconfig lo0 -alias {FROM}")
+		os.system(f"sudo ifconfig {NETIF} -alias {FROM}")
 		rules=os.popen('sudo pfctl -sn -q').read()
 		rules=rules.splitlines()
 		rules='\n'.join([_ for _ in rules if f'to {FROM} port 1:8021' not in _])
@@ -43,7 +48,7 @@ def make_rule():
 		rules=os.popen('sudo pfctl -sn -q').read()+f'\nrdr pass inet proto {{tcp, udp}} to {FROM} port 1:8021 -> {TO}'
 		os.system(f"""
 		sudo sysctl -w net.inet.ip.forwarding=1
-		sudo ifconfig lo0 alias {FROM}
+		sudo ifconfig {NETIF} alias {FROM}
 		echo '{rules}' | sudo pfctl -eNf - 
 		""")
 make_rule()
