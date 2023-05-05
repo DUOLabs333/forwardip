@@ -34,9 +34,11 @@ def delete_rules():
 def Exit(signum,frame):
 	delete_rules()
 	exit()
-
+#Move to subprocess with stdin
 signal.signal(signal.SIGTERM,Exit)
 signal.signal(signal.SIGINT,Exit)
+
+rulesets=["queue","nat","rules"]
 def make_rule():
 	delete_rules()
 	if PLATFORM=='Linux':
@@ -47,6 +49,16 @@ def make_rule():
 			sudo iptables -t nat -A  PREROUTING -d {FROM} -j DNAT --to-destination {TO}
 		""")
 	elif PLATFORM=='Darwin':
+		#Apparently, if internet-sharing is enabled, for this to work on your own computer, you must flush that table first
+		rules=[]
+		for ruleset in ["queue","nat","rules"]:
+			rules.append(os.popen(f"sudo pfctl -s {ruleset} -q").read())
+
+		os.system("sudo pfctl -F all")
+		for i,ruleset in enumerate(rulesets):
+			merge_option='m' if ruleset=="queue" else ruleset[0].upper()
+			os.system(f"echo '{rules[i]}' | sudo pfctl -{merge_option}f -")
+
 		rules=os.popen('sudo pfctl -sn -q').read()+f'\nrdr pass inet proto {{tcp, udp}} to {FROM} port 1:8021 -> {TO}'
 		os.system(f"""
 		sudo sysctl -w net.inet.ip.forwarding=1
