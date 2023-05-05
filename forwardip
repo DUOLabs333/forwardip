@@ -4,7 +4,7 @@
 
 #For Darwin, pfctl rules won't work on that machine, but will apply to all other machines. It is not clear why.
 import sys
-import os
+import os,subprocess
 import signal
 from threading import Event
 PLATFORM=os.uname().sysname
@@ -17,6 +17,10 @@ if len(sys.argv)<=3:
     NETIF="lo0"
 else:
     NETIF="en0"
+
+def command(command,stdin=None):
+	return subprocess.run(command,input=stdin,text=True,capture_output=True).stdout
+
 def delete_rules():
 	if PLATFORM=='Linux':
 		for chain in ["PREROUTING","OUTPUT"]:
@@ -29,7 +33,7 @@ def delete_rules():
 		rules=os.popen('sudo pfctl -sn -q').read()
 		rules=rules.splitlines()
 		rules='\n'.join([_ for _ in rules if f'to {FROM} port 1:8021' not in _])
-		os.system(f"""echo '{rules}' | sudo pfctl -Nf -""")
+		command(["sudo","pfctl","-Nf","-"],stdin=rules)
 
 def Exit(signum,frame):
 	delete_rules()
@@ -52,19 +56,21 @@ def make_rule():
 		#Apparently, if internet-sharing is enabled, for this to work on your own computer, you must flush that table first
 		rules=[]
 		for ruleset in ["queue","nat","rules"]:
-			rules.append(os.popen(f"sudo pfctl -s {ruleset} -q").read())
+			rules.append(command(["sudo","pfctl","-s",ruleset,"-q"]))
 
 		os.system("sudo pfctl -F all")
 		for i,ruleset in enumerate(rulesets):
 			merge_option='m' if ruleset=="queue" else ruleset[0].upper()
-			os.system(f"echo '{rules[i]}' | sudo pfctl -{merge_option}f -")
+			command(["sudo","pfctl",f"-{merge_option}f","-"],stdin=rules[i])
 
 		rules=os.popen('sudo pfctl -sn -q').read()+f'\nrdr pass inet proto {{tcp, udp}} to {FROM} port 1:8021 -> {TO}'
+
 		os.system(f"""
 		sudo sysctl -w net.inet.ip.forwarding=1
 		sudo ifconfig {NETIF} alias {FROM}
-		echo '{rules}' | sudo pfctl -eNf - 
-		""")
+		"""
+		)
+		command(["sudo","pfctl","-eNf","-"],stdin=rules)
 make_rule()
 
 Event().wait()
