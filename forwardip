@@ -32,7 +32,7 @@ def delete_rules():
 		os.system(f"sudo ifconfig {NETIF} -alias {FROM}")
 		rules=os.popen('sudo pfctl -sn -q').read()
 		rules=rules.splitlines()
-		rules='\n'.join([_ for _ in rules if f'to {FROM} port 1:8021' not in _])
+		rules='\n'.join([_ for _ in rules if f'to {FROM} port 1:8021' not in _])+'\n'
 		command(["sudo","pfctl","-Nf","-"],stdin=rules)
 
 def Exit(signum,frame):
@@ -63,7 +63,7 @@ def make_rule():
 			merge_option='m' if ruleset=="queue" else ruleset[0].upper()
 			command(["sudo","pfctl",f"-{merge_option}f","-"],stdin=rules[i])
 
-		rules=os.popen('sudo pfctl -sn -q').read()+f'\nrdr pass inet proto {{tcp, udp}} to {FROM} port 1:8021 -> {TO}'
+		rules=os.popen('sudo pfctl -sn -q').read()+f'\nrdr pass inet proto {{tcp, udp}} to {FROM} port 1:8021 -> {TO}\n'
 
 		os.system(f"""
 		sudo sysctl -w net.inet.ip.forwarding=1
